@@ -43,6 +43,8 @@ class CallLogger(object):
         self.db.execute(sql, arguments)
         self.db.commit()
 
+        self.caller_indicator.show_cid2(callerid)
+
         # Return the CallLogID
         query = "select last_insert_rowid()"
         result = query_db(self.db, query, (), True)
@@ -62,6 +64,21 @@ class CallLogger(object):
 
         if self.config["DEBUG"]:
             print("Initializing CallLogger")
+
+        #  Hardware subsystem
+        status_indicators = self.config["STATUS_INDICATORS"]
+        if status_indicators == "GPIO":
+            from hardware.indicators import CallerIDIndicator
+            #  Initialize the Caller ID Indicator
+            self.caller_indicator = CallerIDIndicator()
+        elif status_indicators == "MQTT":
+            from hardware.mqttindicators import MQTTCallerIDIndicator
+            #  Initialize the Caller ID Indicator
+            self.caller_indicator = MQTTCallerIDIndicator()
+        elif status_indicators == "NULL":
+            from hardware.nullgpio import CallerIDIndicator
+            #  Initialize the Caller ID Indicator
+            self.caller_indicator = CallerIDIndicator()
 
         # Create the Call_History table if it does not exist
         sql = """CREATE TABLE IF NOT EXISTS CallLog (

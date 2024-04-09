@@ -69,6 +69,23 @@ class MQTTIndicatorClient(object):
         client.publish(self.topic_prefix + topic, str(message) + ts, retain=True)
         client.disconnect()
 
+    def publish_pure(self, topic, message):
+        """
+        Publish a message to a topic.
+        """
+        # Changes to the Paho MQTT client API in version 2.0
+        # Even if we don't use callbacks, we need to specify the version
+        if (self.has_callback_version):
+            client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
+        else:
+            # Version 1.x compatibility
+            client = mqtt.Client()
+
+        if self.username is not None:
+            client.username_pw_set(self.username, self.password)
+        client.connect(self.server, self.port)
+        client.publish(self.topic_prefix + topic, str(message), retain=False)
+        client.disconnect()
 
 class MQTTIndicator(object):
     """
@@ -177,3 +194,17 @@ class MQTTMessageCountIndicator(MQTTIndicator):
     @decimal_point.setter
     def decimal_point(self, value):
         self.dp = value
+
+class MQTTCallerIDIndicator(MQTTIndicator):
+    """
+    The message count indicator displays the number of unplayed messages in the system.
+    """
+    def __init__(self):
+        super().__init__('CallerID', None)
+        print("Topic created: {}".format(self.topic))
+        self.lastCaller = None
+
+    def show_cid(self, caller):
+        self.lastCaller = caller
+        print("Invoking publish")
+        self.mqtt_client.publish_pure(self.topic, '{ "name": "' + self.lastCaller["NAME"] + '", "number": "' + self.lastCaller["NMBR"] + '" } ')

@@ -345,3 +345,14 @@ class MessageCountIndicator(object):
     def close(self):
         if self.seven_seg is not None:
             self.seven_seg.close()
+
+class CallerIDIndicator(object):
+    """
+    The message count indicator displays the number of unplayed messages in the system.
+    """
+    def __init__(self):
+        self.lastCaller = None
+
+    def show_cid(self, caller):
+        self.lastCaller = caller
+        print("{} indicator set to {}".format(self.topic, self.lastCaller["NAME"] + ' ' + self.lastCaller["NMBR"]))
