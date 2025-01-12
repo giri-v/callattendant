@@ -260,3 +260,7 @@ See the [Configuration](https://github.com/thess/callattendant/wiki/Home#configu
 section in the project's wiki for more information.
 
 ---
+
+### ToDo
+1. Fix all MQTT messages to use JSON payload
+2. Add ringing and hangup messages
