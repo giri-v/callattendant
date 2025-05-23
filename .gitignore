@@ -126,3 +126,6 @@ python3/
 
 # mypy
 .mypy_cache/
+
+# Node.js
+node_modules/
