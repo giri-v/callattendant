@@ -1,23 +1,25 @@
 const express = require('express');
 const path = require('path');
-const db = require('./lib/database'); // Import database module
+const fs = require('fs'); // fs is used for directory creation
+
+// Load Configuration
+const { getConfig } = require('./lib/configLoader');
+const appConfig = getConfig(); // Load config at the very beginning
 
 // Initialize Database
+const db = require('./lib/database');
 (async () => {
   try {
-    // Using a specific database file for the application
-    await db.initDb(path.join('config', 'callattendant.db'));
+    await db.initDb(appConfig.database.filePath); // Use path from config
     console.log('Database initialized successfully.');
   } catch (err) {
     console.error('Failed to initialize database:', err);
-    process.exit(1); // Exit if DB fails to initialize
+    process.exit(1);
   }
 })();
 
-const fs = require('fs'); // Added for directory creation
-
-// Create voicemails directory
-const voicemailsDir = path.join(__dirname, '..', 'voicemails');
+// Create voicemails directory (using path from config if available, or default)
+const voicemailsDir = path.join(__dirname, '..', appConfig.voicemail.directory || 'voicemails');
 if (!fs.existsSync(voicemailsDir)) {
   fs.mkdirSync(voicemailsDir, { recursive: true });
   console.log('Created voicemails directory:', voicemailsDir);
@@ -25,42 +27,43 @@ if (!fs.existsSync(voicemailsDir)) {
 
 // Initialize MQTT Client
 const mqttClient = require('./lib/mqttClient');
-// Configuration for MQTT (could be moved to a config file)
-const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883';
-const MQTT_CLIENT_ID = process.env.MQTT_CLIENT_ID || 'callAttendantNodeJsApp';
-
-mqttClient.connect(MQTT_BROKER_URL, { clientId: MQTT_CLIENT_ID });
+const mqttClientId = `${appConfig.mqtt.clientIdPrefix}_${Date.now()}`;
+mqttClient.connect(appConfig.mqtt.brokerUrl, { clientId: mqttClientId });
 
 // Initialize Email Service
-const nodemailer = require('nodemailer'); // Import nodemailer
+const nodemailer = require('nodemailer');
 const emailService = require('./lib/emailService');
 
 (async () => {
   try {
-    const testAccount = await nodemailer.createTestAccount();
-    console.log('Ethereal test account created for email notifications.');
-    console.log('Credentials obtained, User: %s, Pass: %s', testAccount.user, testAccount.pass);
-    // For manual checking, you can log these or view the Ethereal inbox.
-    // For automated tests, nodemailer.getTestMessageUrl(info) is better after sending.
-
-    emailService.configureService({
-      host: testAccount.smtp.host,
-      port: testAccount.smtp.port,
-      secure: testAccount.smtp.secure,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-      tls: {
-        rejectUnauthorized: false // Often necessary for Ethereal/self-signed
-      }
-    });
+    // Use Ethereal for testing by default, but allow overriding via config.json in a real setup
+    // For this exercise, we'll stick to Ethereal via createTestAccount.
+    // In a production scenario, appConfig.email.transportOptions would be used.
+    if (process.env.NODE_ENV === 'test_email_with_real_config_DONT_COMMIT') { // Example guard
+        // emailService.configureService(appConfig.email.transportOptions);
+        console.warn("Using real email config - this should not be in committed code for testing purposes unless properly guarded!");
+    } else {
+        const testAccount = await nodemailer.createTestAccount();
+        console.log('Ethereal test account created for email notifications.');
+        console.log('Credentials obtained, User: %s, Pass: %s', testAccount.user, testAccount.pass);
+        emailService.configureService({
+          host: testAccount.smtp.host,
+          port: testAccount.smtp.port,
+          secure: testAccount.smtp.secure,
+          auth: {
+            user: testAccount.user,
+            pass: testAccount.pass,
+          },
+          tls: {
+            rejectUnauthorized: false // Often necessary for Ethereal
+          }
+        });
+    }
   } catch (err) {
-    console.error('Failed to create a test email account or configure service. Email notifications might be disabled.', err);
-    emailService.configureService(null); // Ensure it's set to null if setup fails
+    console.error('Failed to configure email service. Email notifications might be disabled.', err);
+    emailService.configureService(null);
   }
 })();
-
 
 // Create an Express application instance
 const app = express();
@@ -108,7 +111,7 @@ app.get('*', (req, res) => {
 });
 
 // Port Configuration
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || appConfig.server.port || 3000;
 
 // Start Server
 app.listen(PORT, () => {

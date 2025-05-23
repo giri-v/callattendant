@@ -1,0 +1,38 @@
+{
+  "modem": {
+    "port": "/dev/ttyUSB0",
+    "baudRate": 115200,
+    "enableCallerIdCommand": "AT+VCID=1"
+  },
+  "database": {
+    "filePath": "config/callattendant.db"
+  },
+  "mqtt": {
+    "brokerUrl": "mqtt://localhost:1883",
+    "clientIdPrefix": "callAttendantApp",
+    "topics": {
+      "ring": "callattendant/ring",
+      "callerId": "callattendant/callerid",
+      "callStatus": "callattendant/callstatus",
+      "voicemailNew": "callattendant/voicemail/new"
+    }
+  },
+  "voicemail": {
+    "directory": "voicemails",
+    "greetingLeaveMessage": "resources/audio/greetings/leave_message_greeting.wav",
+    "maxRings": 4,
+    "recordDuration": 30,
+    "emailTo": "your_email@example.com",
+    "emailFrom": "callattendant@example.com"
+  },
+  "server": {
+    "port": 3000
+  },
+  "audio": {
+    "modemRawFormat": {
+      "format": "u8",
+      "sampleRate": 8000,
+      "channels": 1
+    }
+  }
+}
